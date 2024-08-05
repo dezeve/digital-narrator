@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #define CPU_STAT_FILE "/proc/stat"
+#define MEM_STAT_FILE "/proc/meminfo"
 
 typedef struct {
 	unsigned long long user;
@@ -29,6 +30,34 @@ static void read_cpu_stat(cpu_stat_t *stat) {
 				&stat->idle);
 	}
 	fclose(pf);
+}
+
+float get_ram_usage() {
+	FILE *pf = fopen(MEM_STAT_FILE, "r");
+	if(!pf) {
+		perror("fopen");
+		return -1.0;
+	}
+	char line[1024];
+	long total_ram = 0;
+	long free_ram = 0;
+	while(fgets(line, sizeof(line), pf)){
+		if(strncmp(line, "MemTotal:", 9) == 0){
+			total_ram = atol(line + 9);
+		} else if(strncmp(line, "MemFree:", 8) == 0){
+			free_ram = atol(line + 8);
+		}
+		if(total_ram > 0 && free_ram > 0) {
+			break;
+		}
+	}
+	fclose(pf);
+	if(total_ram > 0 && free_ram > 0){
+		long used_ram = total_ram - free_ram;
+		return (float)used_ram / total_ram * 100;
+	} else {
+		return -1.0;
+	}
 }
 
 static float calculate_cpu_usage(cpu_stat_t *previous,
@@ -60,7 +89,8 @@ int main() {
 		read_cpu_stat(&current_stat);
 		float cpu_usage =
 			calculate_cpu_usage(&previous_stat, &current_stat);
-		printf("\rCpu %.2f%%", cpu_usage);
+		float ram_usage = get_ram_usage();
+		printf("\rCpu %.2f%% | Ram %.2f%%", cpu_usage, ram_usage);
 		fflush(stdout);
 	}
 	return 0;
