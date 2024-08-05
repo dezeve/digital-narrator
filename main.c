@@ -54,11 +54,15 @@ static float calculate_cpu_usage(cpu_stat_t *previous,
 }
 
 int main() {
-	read_cpu_stat(&previous_stat);
-	sleep(1);
-	read_cpu_stat(&current_stat);
-	float cpu_usage = calculate_cpu_usage(&previous_stat, &current_stat);
-	printf("Cpu Usage=\t%.2f%%\n", cpu_usage);
+	while (1) {
+		read_cpu_stat(&previous_stat);
+		sleep(1);
+		read_cpu_stat(&current_stat);
+		float cpu_usage =
+			calculate_cpu_usage(&previous_stat, &current_stat);
+		printf("\rCpu %.2f%%", cpu_usage);
+		fflush(stdout);
+	}
 	return 0;
 }
 
