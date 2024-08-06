@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/statvfs.h>
 
 #define CPU_STAT_FILE "/proc/stat"
 #define MEM_STAT_FILE "/proc/meminfo"
@@ -60,6 +61,20 @@ float get_ram_usage() {
 	}
 }
 
+float get_disk_usage(const char *mount_point){
+	struct statvfs fs;
+	int result = statvfs(mount_point, &fs);
+	if(result != 0){
+		perror("statvfs");
+		return -1.0;
+	}
+	unsigned long total_blocks = fs.f_blocks;
+	unsigned long free_blocks = fs.f_bfree;
+	float usage_percentage =
+		(1 - (float)free_blocks / total_blocks) * 100;
+	return usage_percentage;
+}
+
 static float calculate_cpu_usage(cpu_stat_t *previous,
 		cpu_stat_t *current) {
 	unsigned long long total_previous = 
@@ -90,9 +105,10 @@ int main() {
 		float cpu_usage =
 			calculate_cpu_usage(&previous_stat, &current_stat);
 		float ram_usage = get_ram_usage();
-		printf("\rCpu %.2f%% | Ram %.2f%%", cpu_usage, ram_usage);
+		float disk_usage = get_disk_usage("/");
+		printf("\rCpu %.2f%% | Ram %.2f%% | Disk %.2f%%",
+				cpu_usage, ram_usage, disk_usage);
 		fflush(stdout);
 	}
 	return 0;
 }
-
